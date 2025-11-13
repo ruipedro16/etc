@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+"""
+Merges PDF files into a single document.
+
+This script takes a list of PDF files or directories as input and merges them
+into a single output PDF file. When a directory is provided, all PDF files
+within it are found and merged in alphabetical order.
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+try:
+    from pypdf import PdfWriter
+except ImportError:
+    print(
+        "Error: pypdf is not installed. Please install it using 'pip install pypdf'",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Merge PDF files.")
+    parser.add_argument(
+        "paths",
+        nargs="+",
+        type=Path,
+        help="List of PDF files or directories containing PDF files to merge.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default="merged.pdf",
+        help="Path for the output merged PDF file. Defaults to 'merged.pdf'.",
+    )
+    args = parser.parse_args()
+
+    pdf_files = []
+    for path in sorted(args.paths):
+        if path.is_file() and path.suffix.lower() == ".pdf":
+            pdf_files.append(path)
+        elif path.is_dir():
+            # Find and sort PDF files within the directory
+            dir_files = sorted(path.glob("*.pdf"))
+            pdf_files.extend(dir_files)
+        else:
+            print(
+                f"Warning: '{path}' is not a valid PDF file or directory. Skipping.",
+                file=sys.stderr,
+            )
+
+    if not pdf_files:
+        print("Error: No PDF files found to merge.", file=sys.stderr)
+        sys.exit(1)
+
+    merger = PdfWriter()
+    print("Merging the following files in order:")
+    for pdf_path in pdf_files:
+        print(f" - {pdf_path}")
+        try:
+            merger.append(str(pdf_path))
+        except Exception as e:
+            print(
+                f"Error reading or parsing '{pdf_path}': {e}. Skipping this file.",
+                file=sys.stderr,
+            )
+
+    if len(merger.pages) == 0:
+        print(
+            "Error: No pages could be merged from the provided files.", file=sys.stderr
+        )
+        sys.exit(1)
+
+    try:
+        merger.write(args.output)
+        merger.close()
+        print(f"\nSuccessfully merged {len(pdf_files)} PDF source(s) into '{args.output}'.")
+    except Exception as e:
+        print(f"Error writing to output file '{args.output}': {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
