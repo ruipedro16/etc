@@ -26,6 +26,7 @@ fi
 echo "Formatting staged bash files with shfmt..."
 for file in $STAGED_BASH_FILES; do
 	if [ -f "$file" ]; then
+		echo "- Formatting $file"
 		shfmt -w "$file"
 		git add "$file"
 	fi
